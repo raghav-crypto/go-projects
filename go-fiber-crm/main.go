@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/basicauth"
 	"github.com/raghav-crypto/go-projects/database"
 	"github.com/raghav-crypto/go-projects/lead"
 	"gorm.io/driver/sqlite"
@@ -37,6 +38,13 @@ func initDatabase() {
 func main() {
 	app := fiber.New()
 	initDatabase()
+	app.Use(basicauth.New(basicauth.Config{
+		Users: map[string]string{
+			"john":  "doe",
+			"admin": "123456",
+		},
+	}))
 	setupRoutes(app)
+
 	log.Fatal(app.Listen(":3000"))
 }
