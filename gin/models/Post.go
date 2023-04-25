@@ -8,18 +8,10 @@ import (
 )
 
 type Post struct {
-	gorm.Model
-	ID    uuid.UUID `gorm:"index;primary_key;type:uuid;default:uuid_generate_v4()"`
-	Title string    `json:"title" binding:"required"`
-	Body  string    `json:"body" binding:"required"`
-}
-
-func (p *Post) BeforeCreate(tx *gorm.DB) (err error) {
-	p.CreatedAt = time.Now()
-	p.UpdatedAt = time.Now()
-	return nil
-}
-func (p *Post) BeforeUpdate(tx *gorm.DB) (err error) {
-	p.UpdatedAt = time.Now()
-	return nil
+	ID        uuid.UUID      `gorm:"type:uuid;default:uuid_generate_v4();primaryKey" json:"id"`
+	Title     string         `gorm:"size:255;not null" json:"title" binding:"required"`
+	Body      string         `gorm:"type:text;not null" json:"body" binding:"required"`
+	CreatedAt time.Time      `gorm:"not null" json:"createdAt"`
+	UpdatedAt time.Time      `gorm:"not null" json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at"`
 }
