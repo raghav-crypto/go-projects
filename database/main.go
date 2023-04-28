@@ -1,104 +1,34 @@
 package main
 
 import (
-	"database/sql"
+	"database/driver"
 	"fmt"
 	"log"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"net/http"
 )
 
-func main() {
-	conn, err := sql.Open("pgx", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Unable to connect: %v", err))
+func HandleConn(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	value := query.Get("select")
+	if value == "" {
+		fmt.Fprintf(w, "Only select is allowed.")
+		return
 	}
-	defer conn.Close()
-	log.Println("Connected to database")
-
-	err = conn.Ping()
-	if err != nil {
-		log.Fatal("Unable to ping database")
-	}
-	log.Println("Ping successful")
-
-	// get rows from table
-	err = getAllRows(conn)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// insert a row
-	insertQuery := `INSERT INTO temp (title) VALUES ($1) RETURNING id, title`
-	_, err = conn.Exec(insertQuery, "title")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Inserted a row")
-
-	err = getAllRows(conn)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// update a row
-	updateQuery := `update temp set title = $1 where id = $2`
-	_, err = conn.Exec(updateQuery, "updated title", 1)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = getAllRows(conn)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// getting a row
-	fmt.Println("Getting a row")
-	getRowQuery := `select id, title from temp where id = $1`
-	row := conn.QueryRow(getRowQuery, 1)
-	var id int
-	var title string
-	err = row.Scan(&id, &title)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Record is ", id, title)
-
-	// deleting a row
-	fmt.Println("Deleting a row")
-	deleteRowQuery := `delete from temp where id = $1`
-	_, err = conn.Exec(deleteRowQuery, 1)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = getAllRows(conn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	fmt.Println(fmt.Sprintf("Number of bytes written: %d", len(value)))
 }
-
-func getAllRows(conn *sql.DB) error {
-	rows, err := conn.Query("SELECT id, title FROM temp")
+func main() {
+	log.Println("Connecting to database...")
+	db, err := driver.ConnectSQL("postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
-		log.Println(err)
-		return err
+		log.Fatal("Cannot connect to database! Dying...")
 	}
-	defer rows.Close()
-	var id int
-	var title string
-	for rows.Next() {
-		err = rows.Scan(&id, &title)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		fmt.Println("Record is ", id, title)
+	log.Println("Connected to database...")
+
+	defer db.SQL.Close()
+	http.HandleFunc("/", HandleConn)
+
+	fmt.Println("Starting server at port 8000")
+	if err := http.ListenAndServe(":8000", nil); err != nil {
+		log.Fatal(err)
 	}
-	if err = rows.Err(); err != nil {
-		log.Fatal("Error scanning rows", err)
-	}
-	fmt.Println("--------------------")
-	return nil
 }
